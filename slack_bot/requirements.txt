@@ -1,0 +1,5 @@
+slackclient
+SQLAlchemy
+psycopg2-binary
+vaderSentiment
+pymongo

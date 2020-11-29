@@ -1,0 +1,64 @@
+# File that specifies the structure of our pipeline
+version: '3'
+
+# Everything that follows after services is a separate container
+services:
+
+  # 1. Container: Collects tweets from twitter
+  tweet_collector:
+    build: tweet_collector/
+    volumes:
+    - ./tweet_collector/:/app # Connects the directory ./tweet_collector with the container directory /app
+    # What does the depends_on exactly do?
+    # It makes sure that the mongodb container is created before the tweet_collector container
+    # Does depends_on guarantee that the MongoDB database is up and running before the tweet_collector is collecting tweets?
+    depends_on:
+      - mongodb
+
+  # 2. Container: Stores the raw tweets
+  mongodb:
+    image: mongo
+    ports:
+      - 27017:27017
+
+  # 3. Container: ETL job
+  etl_job:
+    build: etl_job/
+    volumes:
+      - ./etl_job/:/app
+    depends_on:
+      - mongodb
+      - mypg
+
+  # 4. Container: Postgres database server
+  mypg:
+      image: postgres:12.4
+      ports:
+        - 5555:5432
+      environment:
+        - POSTGRES_USER=postgres
+        - POSTGRES_PASSWORD=1234
+
+  5. Container: Slack bot
+  slack_bot:
+    container_name: slack_bot
+    build: slack_bot/
+    volumes:
+      - ./slack_bot/:/app
+    depends_on:
+      - mypg
+
+# 6. Container: Metabase
+  metabase:
+      image: metabase/metabase
+      ports:
+        - 3001:3000
+      environment:
+        - MB_DB_TYPE=postgres
+        - MB_DB_DBNAME=postgres
+        - MB_DB_PORT=5432
+        - MB_DB_USER=postgres
+        - MB_DB_PASS=1234
+        - MB_DB_HOST=mypg
+      depends_on:
+        - mypg
